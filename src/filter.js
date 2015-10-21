@@ -224,7 +224,13 @@ var addFilterCriteria = function(criteria){
   criteria = setDefaultCriteriaOpts(criteria);
   this.bindEvent(criteria.ele, criteria.event);
 
-  criteria._q = criteria.field + (criteria.type == 'range' ? '.$bt' : '')
+  if(criteria.type == 'range'){
+  criteria._q = criteria.field + '.$bt';
+  }else if(criteria.type == 'like'){
+  criteria._q = criteria.field + '.$li';
+  }else{
+  criteria._q = criteria.field 
+  }
   criteria.active = true;
 
   this.criterias.push(criteria);
@@ -302,19 +308,26 @@ F.activateCriteria = function(names){
 F.getSelectedValues = function(criteria, context){
   var vals = [];
   
-  if(criteria.multiples){
-  	criteria.$ele.filter(criteria.selector).each(function() {
-  		var str = $(this).val();
-  		var res = str.split(criteria.delimiter || '-');
-  		Array.prototype.push.apply(vals, res);
-  	});
-  }else{
-  	criteria.$ele.filter(criteria.selector).each(function() {
-  		vals.push($(this).val());
-  	});
+  if(criteria.type == 'like'){
+    var vals = "";
+    criteria.$ele.filter(criteria.selector).each(function() {
+      vals+= "(?=.*"+$(this).val()+")";
+      });
   }
-  if(vals==""){vals = ['$#$^*IJKJKIU*(ISHKJM<KU*(*&LKJASsfsdLASKH'];}
-
+  else if(criteria.multiples){
+     criteria.$ele.filter(criteria.selector).each(function() {
+     var str = $(this).val();
+     var res = str.split(criteria.delimiter || '-');
+     Array.prototype.push.apply(vals, res);
+     });
+     if(vals==""){vals = ['$#$^*IJKJKIU*(ISHKJM<KU*(*&LKJASsfsdLASKH'];}
+  }else{
+     criteria.$ele.filter(criteria.selector).each(function() {
+     vals.push($(this).val());
+     });
+    if(vals==""){vals = ['$#$^*IJKJKIU*(ISHKJM<KU*(*&LKJASsfsdLASKH'];}
+  }
+  
   if($.isArray(vals[0])){
     vals = [].concat.apply([], vals);
   }
