@@ -1,11 +1,11 @@
 /*
  * filter.js
- * 2.1.0 (2016-08-09)
+ * 2.1.0 (2017-01-26)
  *
  * Released under the MIT license
  * http://opensource.org/licenses/MIT
  *
- * Copyright 2011-2016 Jiren Patel[jirenpatel@gmail.com]
+ * Copyright 2011-2017 Jiren Patel[jirenpatel@gmail.com]
  *
  * Dependency:
  *  jQuery(v1.9 >=)
@@ -1050,21 +1050,21 @@
   
     return true;
   };
-  
+    
   F.addOrder = function(orders){
-    var self = this;
+  var self = this;
   
-    if(!orders){ return false; }
+  if(!orders){ return false; }
   
-    if($.isArray(orders)){
-      $.each(orders, function(){
-        addOrderCriteria.call(self, this);
-      });
-    }else{
-      addOrderCriteria.call(self, orders);
-    }
+  if($.isArray(orders)){
+    $.each(orders, function(){
+      addOrderCriteria.call(self, this);
+    });
+  }else{
+    addOrderCriteria.call(self, orders);
+  }
   
-    return true;
+  return true;
   };
   
   // Add Filter criteria
@@ -1083,14 +1083,20 @@
     criteria = setDefaultCriteriaOpts(criteria);
     this.bindEvent(criteria.ele, criteria.event);
   
-    criteria._q = criteria.field + (criteria.type == 'range' ? '.$bt' : '')
+    if(criteria.type == 'range'){
+    criteria._q = criteria.field + '.$bt';
+    }else if(criteria.type == 'like'){
+    criteria._q = criteria.field + '.$li';
+    }else{
+    criteria._q = criteria.field 
+    }
     criteria.active = true;
   
     this.criterias.push(criteria);
   
     return true;
   };
-  
+    
   // Add Order criteria
   // order: { ele: '#ordertoggle'}
   // option value must be value="field.in.object|asc/desc"
@@ -1106,10 +1112,10 @@
       return false;
     }
   
-	order = setDefaultCriteriaOpts(order);
+  order = setDefaultCriteriaOpts(order);
     this.bindEvent(order.ele, order.event);
-	
-	order.active = true;
+  
+  order.active = true;
     this.orders.push(order);
   
     return true;
@@ -1160,20 +1166,27 @@
   
   F.getSelectedValues = function(criteria, context){
     var vals = [];
-  
-    if(criteria.multiples){
-		   criteria.$ele.filter(criteria.selector).each(function() {
-			  var str = $(this).val();
-			  var res = str.split(criteria.delimiter || '-');
-			  Array.prototype.push.apply(vals, res);
-		  });
-	   }else{
-		   criteria.$ele.filter(criteria.selector).each(function() {
-			  vals.push($(this).val());
-		  });
-	   }
-	   if(vals==""){vals = ['$#$^*IJKJKIU*(ISHKJM<KU*(*&LKJASsfsdLASKH'];}
-  
+    
+    if(criteria.type == 'like'){
+      var vals = "";
+      criteria.$ele.filter(criteria.selector).each(function() {
+        vals+= "(?=.*"+$(this).val()+")";
+        });
+    }
+    else if(criteria.multiples){
+       criteria.$ele.filter(criteria.selector).each(function() {
+       var str = $(this).val();
+       var res = str.split(criteria.delimiter || '-');
+       Array.prototype.push.apply(vals, res);
+       });
+       if(vals==""){vals = ['$#$^*IJKJKIU*(ISHKJM<KU*(*&LKJASsfsdLASKH'];}
+    }else{
+       criteria.$ele.filter(criteria.selector).each(function() {
+       vals.push($(this).val());
+       });
+      if(vals==""){vals = ['$#$^*IJKJKIU*(ISHKJM<KU*(*&LKJASsfsdLASKH'];}
+    }
+    
     if($.isArray(vals[0])){
       vals = [].concat.apply([], vals);
     }
@@ -1191,20 +1204,21 @@
     return context.execCallback('onFilterSelect', {criteria: criteria, values: vals}) || vals;
   };
   
+  F.lastResult = function(){
+    return (this.last_result || this.records);
+  };
+   
   F.getOrderValues = function(order, context){
     var vals = {};
   
-	  order.$ele.filter(order.selector).each(function() {
-		  var str = $(this).val();
-		  var splits = str.split('|');
-		  vals[splits[0]] = splits[1];
-	 });
-	
-	 return vals;
-  };
-
-  F.lastResult = function(){
-    return (this.last_result || this.records);
+  order.$ele.filter(order.selector).each(function() {
+  	var str = $(this).val();
+  	var splits = str.split('|');
+  	console.log(splits);
+  	vals[splits[0]] = splits[1];
+  });
+  
+  return vals;
   };
   
   F.filter = function(){
@@ -1213,9 +1227,9 @@
         count = 0,
         self = this,
         criteria,
-		      orders,
-		      orvals,
-		      orcount = 0;
+    		orders,
+    		orvals,
+    		orcount = 0;
   
     $.each(this.criterias, function(){
       if(this.active){
@@ -1229,19 +1243,20 @@
       }
     });
   
-	    $.each(this.orders, function(){
-      if(this.active){
-        orvals = self.getOrderValues(this, self);
-            orcount = orcount + 1;
-        }
-     });
-     
     this.anyFilterSelected = count > 0;
-   	if(orcount > 0){
-       criteria = count ? this.Model.where(query).order(orvals) : this.Model.order(orvals);
-   	}else{
-   	criteria = count ? this.Model.where(query) : this.Model;
-   	}
+    
+    $.each(this.orders, function(){
+        if(this.active){
+          orvals = self.getOrderValues(this, self);
+              orcount = orcount + 1;
+          }
+      });
+  	if(orcount > 0){
+      criteria = count ? this.Model.where(query).order(orvals) : this.Model.order(orvals);
+  	}else{
+  	criteria = count ? this.Model.where(query) : this.Model;
+  	}
+  	
     this.execCallback('shortResult', criteria);
     this.last_result = criteria.all;
   
@@ -1516,7 +1531,7 @@
   };
   
   F.parseValues = function(field, values){
-    var type = this.Model.schema[field];
+    var type = typeof this.Model.schema == 'undefined' ? 'String' : this.Model.schema[field];
   
     if(type == 'Number'){
       return $.map(values, function(v){ return Number(v) }); 
